@@ -3,7 +3,7 @@ import { Composition, registerRoot } from 'remotion';
 import { VideoComposition } from './Composition';
 import { WordTiming } from '@/lib/tts';
 
-export interface VideoProps {
+export interface VideoProps extends Record<string, unknown> {
   text: string;
   audioPath: string;
   timings: WordTiming[];
