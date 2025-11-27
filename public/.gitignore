@@ -1,0 +1,12 @@
+# Ignore all files in audio and videos directories
+audio/*
+videos/*
+
+# Keep .gitkeep and .gitignore files
+!audio/.gitkeep
+!audio/.gitignore
+!videos/.gitkeep
+!videos/.gitignore
+
+# The subway_surfers.mp4 should be in the public root, not in videos
+# Make sure to add it to the root of the public directory
