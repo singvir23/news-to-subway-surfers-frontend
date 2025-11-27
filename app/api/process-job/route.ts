@@ -4,7 +4,7 @@ import { renderMedia, selectComposition } from '@remotion/renderer';
 import path from 'path';
 import { existsSync, unlinkSync, readdirSync, statSync, readFileSync, mkdirSync } from 'fs';
 import os from 'os';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 
 export const maxDuration = 300; // 5 minutes max for processing
 
@@ -28,6 +28,14 @@ async function updateJobStatus(jobId: string, updates: Partial<JobMetadata>) {
 
     // Merge updates
     const updatedJob = { ...currentJob, ...updates };
+
+    // Delete old version first, then create new
+    try {
+      const oldUrl = `https://${process.env.BLOB_READ_WRITE_TOKEN?.split('_')[2]}.public.blob.vercel-storage.com/jobs/${jobId}.json`;
+      await del(oldUrl);
+    } catch {
+      // Ignore if doesn't exist
+    }
 
     // Save back to blob
     await put(`jobs/${jobId}.json`, JSON.stringify(updatedJob), {
