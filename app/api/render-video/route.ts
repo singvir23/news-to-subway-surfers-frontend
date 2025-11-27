@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       entryPoint: path.join(process.cwd(), 'remotion', 'Root.tsx'),
       publicDir: path.join(process.cwd(), 'public'),
       webpackOverride: (config) => {
-        // Configure webpack to understand Next.js path aliases
+        // Configure webpack to understand Next.js path aliases and inject env vars
         return {
           ...config,
           resolve: {
@@ -77,6 +77,14 @@ export async function POST(request: NextRequest) {
               '@': process.cwd(),
             },
           },
+          plugins: [
+            ...(config.plugins || []),
+            new (require('webpack')).DefinePlugin({
+              'process.env.NEXT_PUBLIC_BACKGROUND_VIDEO_URL': JSON.stringify(
+                process.env.NEXT_PUBLIC_BACKGROUND_VIDEO_URL
+              ),
+            }),
+          ],
         };
       },
     });
@@ -127,6 +135,8 @@ export async function POST(request: NextRequest) {
       videoBitrate: '2M',
       encodingMaxRate: '2.5M',
       encodingBufferSize: '4M',
+      // Increase timeout to handle large video downloads
+      timeoutInMilliseconds: 120000, // 2 minutes
     });
 
     console.log('Video rendered successfully:', outputPath);

@@ -21,6 +21,8 @@ export const Background: React.FC = () => {
       // Mute the background video (we only want our TTS audio)
       muted
       volume={0}
+      // Increase timeout for large video files
+      delayRenderTimeoutInMilliseconds={60000}
       onError={(e) => {
         console.error('Video load error:', e);
         console.error('Attempted to load video from:', videoSrc);
