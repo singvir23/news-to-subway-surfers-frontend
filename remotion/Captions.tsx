@@ -38,24 +38,19 @@ export const Captions: React.FC<CaptionsProps> = ({ timings }) => {
         display: 'flex',
         flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: '12px',
+        gap: '16px',
         padding: '20px',
       }}
     >
       {currentSegment.words.map((wordData, index) => {
-        // Determine the opacity and styling based on word position
-        let opacity = 0.4; // Default: past words are dimmed
-        let color = '#999999'; // Gray for past words
+        // Determine the color based on word position
+        let color = '#FFFFFF'; // White for all words
         let scale = 1;
 
         if (index === currentWordIndex) {
-          // Current word: full brightness and highlighted
-          opacity = 1;
-          color = '#FFFFFF'; // White
-          scale = 1.1; // Slightly larger
-        } else if (index > currentWordIndex) {
-          // Future words: hidden
-          opacity = 0;
+          // Current word: cyan color
+          color = '#00FFFF'; // Cyan
+          scale = 1.15; // Slightly larger for emphasis
         }
 
         return (
@@ -63,15 +58,17 @@ export const Captions: React.FC<CaptionsProps> = ({ timings }) => {
             key={index}
             style={{
               display: 'inline-block',
-              fontSize: '48px',
-              fontWeight: 'bold',
+              fontSize: '64px',
+              fontWeight: '900',
               color: color,
-              opacity: opacity,
+              opacity: 1,
               transform: `scale(${scale})`,
-              transition: 'all 0.2s ease',
+              transition: 'all 0.15s ease-out',
               textShadow: '3px 3px 6px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9)',
-              WebkitTextStroke: '2px black',
-              letterSpacing: '1px',
+              WebkitTextStroke: '3px black',
+              letterSpacing: '2px',
+              fontFamily: 'Arial Black, sans-serif',
+              textTransform: 'uppercase',
             }}
           >
             {wordData.word}

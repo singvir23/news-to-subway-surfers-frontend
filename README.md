@@ -4,8 +4,9 @@ Automated video generator that creates "Subway Surfers" style videos with TTS na
 
 ## Features
 
+- **AI-Powered Text Processing**: Convert raw news articles to engaging storytelling format using AWS SageMaker fine-tuned LLM
 - **Free TTS**: Microsoft Edge TTS with natural voices
-- **Karaoke Captions**: Word-by-word synchronized highlighting
+- **Karaoke Captions**: Word-by-word synchronized highlighting with cyan highlighting
 - **Local Storage**: Videos stored in local filesystem
 - **Vertical Format**: 1080x1920 for TikTok/Instagram/YouTube Shorts
 - **Auto Cleanup**: Old temporary files deleted automatically
@@ -35,6 +36,12 @@ Create `.env.local`:
 ```bash
 # Site URL for API calls
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# AWS Credentials for SageMaker (for AI text processing)
+AWS_ACCESS_KEY_ID=your_access_key_here
+AWS_SECRET_ACCESS_KEY=your_secret_key_here
+AWS_REGION=us-east-2
+SAGEMAKER_ENDPOINT_NAME=subway-surfers-fine-tuned
 ```
 
 ### 4. Run
@@ -47,21 +54,25 @@ Visit http://localhost:3000
 
 ## How It Works
 
-**Async Architecture**
+**AI-Powered Workflow**
 
-1. User submits text → Receives job ID instantly
-2. Frontend polls job status every 2 seconds
-3. Background processing:
+1. **Optional**: User pastes raw news article → Clicks "Process with AI"
+2. AWS SageMaker LLM converts article to engaging storytelling format
+3. User can edit the processed text
+4. User clicks "Create video" → Receives job ID instantly
+5. Frontend polls job status every 2 seconds
+6. Background processing:
    - Generate audio with Edge TTS
    - Render video with Remotion
    - Save to local filesystem
    - Clean up temp audio files
-4. Status updates in real-time (Generating audio → Rendering → Done)
-5. Download link appears when complete (1-3 minutes)
+7. Status updates in real-time (Generating audio → Rendering → Done)
+8. Download link appears when complete (1-3 minutes)
 
 ## Tech Stack
 
 - Next.js 14
+- AWS SageMaker (fine-tuned Llama 3.1 8B for text processing)
 - Remotion (video rendering)
 - Edge TTS (text-to-speech)
 - TypeScript
@@ -71,14 +82,15 @@ Visit http://localhost:3000
 ```
 app/
 ├── api/
+│   ├── process-text/      # AI text processing with SageMaker
 │   ├── generate-audio/    # TTS generation
 │   ├── submit-job/        # Job submission (returns instantly)
 │   ├── process-job/       # Background video processing
 │   └── job-status/        # Status polling endpoint
-└── page.tsx               # Main UI with polling
+└── page.tsx               # Main UI with AI processing and polling
 remotion/
 ├── Background.tsx         # Background video layer
-├── Captions.tsx          # Karaoke captions
+├── Captions.tsx          # Karaoke captions (cyan highlighting)
 ├── Audio.tsx             # Audio layer
 └── Root.tsx              # Remotion composition
 lib/

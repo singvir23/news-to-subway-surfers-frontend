@@ -15,6 +15,7 @@ interface JobStatus {
 export default function Home() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [processingAI, setProcessingAI] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
@@ -43,6 +44,38 @@ export default function Home() {
 
     return () => clearInterval(pollInterval);
   }, [jobId]);
+
+  const handleProcessAI = async () => {
+    if (!text.trim()) {
+      setError('Please enter some text to process');
+      return;
+    }
+
+    setProcessingAI(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/process-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process text');
+      }
+
+      const data = await response.json();
+      setText(data.processedText);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred while processing text');
+    } finally {
+      setProcessingAI(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!text.trim()) {
@@ -105,13 +138,15 @@ export default function Home() {
             Subway Surfers Video Generator
           </h1>
           <p className="text-zinc-400">
-            Text to video with TTS and synchronized captions
+            Convert news articles to engaging stories with AI, then create videos with TTS and synchronized captions
           </p>
         </div>
 
         {/* Input Section */}
         <div className="mb-8">
-          <label className="block text-sm font-medium mb-3 text-zinc-300">Text</label>
+          <label className="block text-sm font-medium mb-3 text-zinc-300">
+            Paste your news article or text
+          </label>
 
           <textarea
             className="w-full h-64 p-4 bg-zinc-900 text-white border border-zinc-800 focus:border-zinc-600 focus:outline-none resize-none font-mono text-sm"
@@ -126,27 +161,51 @@ export default function Home() {
               {text.split(/\s+/).filter(w => w.length > 0).length} words
             </span>
 
-            <button
-              onClick={handleSubmit}
-              disabled={loading || !text.trim()}
-              className={`px-5 py-2 text-sm font-medium transition ${
-                loading || !text.trim()
-                  ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                  : 'bg-white text-black hover:bg-zinc-200'
-              }`}
-            >
-              {isProcessing ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {getStatusDisplay()}
-                </span>
-              ) : (
-                'Create video'
-              )}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleProcessAI}
+                disabled={processingAI || loading || !text.trim()}
+                className={`px-4 py-2 text-sm font-medium transition ${
+                  processingAI || loading || !text.trim()
+                    ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {processingAI ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </span>
+                ) : (
+                  '✨ Process with AI'
+                )}
+              </button>
+
+              <button
+                onClick={handleSubmit}
+                disabled={loading || !text.trim()}
+                className={`px-5 py-2 text-sm font-medium transition ${
+                  loading || !text.trim()
+                    ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                    : 'bg-white text-black hover:bg-zinc-200'
+                }`}
+              >
+                {isProcessing ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {getStatusDisplay()}
+                  </span>
+                ) : (
+                  'Create video'
+                )}
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -216,11 +275,12 @@ export default function Home() {
         {/* Info */}
         <div className="border-t border-zinc-800 pt-8">
           <div className="text-sm text-zinc-500 space-y-1">
+            <p>• AI-powered text processing converts news articles to storytelling format</p>
             <p>• Generates 9:16 vertical videos for social media</p>
             <p>• Uses Microsoft Edge TTS for voice narration</p>
             <p>• Karaoke-style word highlighting</p>
             <p>• Processing happens in the background (1-3 minutes)</p>
-            <p>• You can close this page and come back later</p>
+            <p>• You can edit the AI-processed text before creating the video</p>
           </div>
         </div>
       </div>
