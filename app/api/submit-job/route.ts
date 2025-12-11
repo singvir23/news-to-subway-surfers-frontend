@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { saveJobMetadata, JobMetadata } from '@/lib/localJobStorage';
 
 export const maxDuration = 10; // Quick response
-
-interface JobMetadata {
-  id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  text: string;
-  createdAt: number;
-  videoUrl?: string;
-  error?: string;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate unique job ID
-    const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     // Create job metadata
     const jobMetadata: JobMetadata = {
@@ -31,11 +22,8 @@ export async function POST(req: NextRequest) {
       createdAt: Date.now(),
     };
 
-    // Store job metadata in Vercel Blob
-    await put(`jobs/${jobId}.json`, JSON.stringify(jobMetadata), {
-      access: 'public',
-      addRandomSuffix: false,
-    });
+    // Store job metadata in local filesystem
+    saveJobMetadata(jobId, jobMetadata);
 
     // Trigger background processing (non-blocking)
     const processUrl = new URL('/api/process-job', req.url);

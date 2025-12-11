@@ -2,52 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import path from 'path';
-import { existsSync, unlinkSync, readdirSync, statSync, readFileSync, mkdirSync } from 'fs';
+import { existsSync, unlinkSync, readdirSync, statSync, mkdirSync } from 'fs';
 import os from 'os';
-import { put, del } from '@vercel/blob';
+import { updateJobMetadata } from '@/lib/localJobStorage';
 
 export const maxDuration = 300; // 5 minutes max for processing
-
-interface JobMetadata {
-  id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  text: string;
-  createdAt: number;
-  videoUrl?: string;
-  error?: string;
-  progress?: string;
-}
-
-// Update job status in Vercel Blob
-async function updateJobStatus(jobId: string, updates: Partial<JobMetadata>) {
-  try {
-    // Fetch current job data
-    const jobUrl = `https://${process.env.BLOB_READ_WRITE_TOKEN?.split('_')[2]}.public.blob.vercel-storage.com/jobs/${jobId}.json`;
-    const response = await fetch(jobUrl);
-    const currentJob = response.ok ? await response.json() : {};
-
-    // Merge updates
-    const updatedJob = { ...currentJob, ...updates };
-
-    // Delete old version first, then create new
-    try {
-      const oldUrl = `https://${process.env.BLOB_READ_WRITE_TOKEN?.split('_')[2]}.public.blob.vercel-storage.com/jobs/${jobId}.json`;
-      await del(oldUrl);
-    } catch {
-      // Ignore if doesn't exist
-    }
-
-    // Save back to blob
-    await put(`jobs/${jobId}.json`, JSON.stringify(updatedJob), {
-      access: 'public',
-      addRandomSuffix: false,
-    });
-
-    console.log(`Job ${jobId} updated:`, updates);
-  } catch (error) {
-    console.error(`Failed to update job ${jobId}:`, error);
-  }
-}
 
 // Cleanup old files
 function cleanupOldFiles(directory: string, maxAgeMs: number = 3600000) {
@@ -83,7 +42,7 @@ export async function POST(req: NextRequest) {
   // Run processing asynchronously (don't await in the main flow)
   processVideo(jobId, text).catch(err => {
     console.error(`Job ${jobId} failed:`, err);
-    updateJobStatus(jobId, {
+    updateJobMetadata(jobId, {
       status: 'failed',
       error: err instanceof Error ? err.message : 'Unknown error'
     });
@@ -94,7 +53,7 @@ export async function POST(req: NextRequest) {
 
 async function processVideo(jobId: string, text: string) {
   try {
-    await updateJobStatus(jobId, { status: 'processing', progress: 'Generating audio...' });
+    updateJobMetadata(jobId, { status: 'processing', progress: 'Generating audio...' });
 
     // Step 1: Generate audio
     console.log(`[${jobId}] Generating audio...`);
@@ -111,7 +70,7 @@ async function processVideo(jobId: string, text: string) {
     const { audioPath, timings, duration } = await audioResponse.json();
     console.log(`[${jobId}] Audio generated: ${audioPath}`);
 
-    await updateJobStatus(jobId, { progress: 'Rendering video...' });
+    updateJobMetadata(jobId, { progress: 'Rendering video...' });
 
     // Step 2: Setup directories
     const audioDir = path.join(process.cwd(), 'public', 'audio');
@@ -142,14 +101,6 @@ async function processVideo(jobId: string, text: string) {
               '@': process.cwd(),
             },
           },
-          plugins: [
-            ...(config.plugins || []),
-            new (require('webpack')).DefinePlugin({
-              'process.env.NEXT_PUBLIC_BACKGROUND_VIDEO_URL': JSON.stringify(
-                process.env.NEXT_PUBLIC_BACKGROUND_VIDEO_URL
-              ),
-            }),
-          ],
         };
       },
     });
@@ -195,22 +146,10 @@ async function processVideo(jobId: string, text: string) {
       timeoutInMilliseconds: 240000, // 4 minutes
     });
 
-    console.log(`[${jobId}] Video rendered`);
+    console.log(`[${jobId}] Video rendered at ${outputPath}`);
 
-    await updateJobStatus(jobId, { progress: 'Uploading to cloud...' });
-
-    // Step 6: Upload to Vercel Blob
-    const videoBuffer = readFileSync(outputPath);
-    const blob = await put(outputFileName, videoBuffer, {
-      access: 'public',
-      contentType: 'video/mp4',
-    });
-
-    console.log(`[${jobId}] Video uploaded: ${blob.url}`);
-
-    // Step 7: Cleanup
+    // Step 6: Cleanup audio files (keep video local)
     try {
-      unlinkSync(outputPath);
       const audioFilePath = path.join(process.cwd(), 'public', audioPath);
       if (existsSync(audioFilePath)) {
         unlinkSync(audioFilePath);
@@ -223,17 +162,18 @@ async function processVideo(jobId: string, text: string) {
       console.error('Cleanup error:', err);
     }
 
-    // Step 8: Mark as completed
-    await updateJobStatus(jobId, {
+    // Step 7: Mark as completed with local video URL
+    const videoUrl = `/videos/${outputFileName}`;
+    updateJobMetadata(jobId, {
       status: 'completed',
-      videoUrl: blob.url,
+      videoUrl: videoUrl,
       progress: 'Done!',
     });
 
     console.log(`[${jobId}] Job completed successfully`);
   } catch (error) {
     console.error(`[${jobId}] Processing failed:`, error);
-    await updateJobStatus(jobId, {
+    updateJobMetadata(jobId, {
       status: 'failed',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
